@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cybercrime Dashboard</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crossfilter2/1.5.4/crossfilter.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dc/4.2.4/dc.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dc/4.2.4/style/dc.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f111a;
+      color: #fff;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      padding: 20px;
+      background: #1a1e2e;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      box-shadow: 0 2px 18px #0fffc12a;
+      justify-content: center;
+      letter-spacing: 1px;
+    }
+    .logo-cyber {
+      color: #0fffc1;
+      font-size: 2em;
+      text-shadow: 0 2px 8px #0fffc155;
+    }
+    .dashboard-container {
+      padding: 32px 8px 8px 8px;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+    .kpi-center-wrapper {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 38px;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 180px);
+      gap: 24px;
+      justify-content: center;
+      align-items: center;
+      background: rgba(26,30,46,0.85);
+      border-radius: 20px;
+      padding: 28px 32px 18px 32px;
+      box-shadow: 0 6px 32px 0 #0fffc14a;
+      position: relative;
+    }
+    .kpi-box {
+      background: #23273c;
+      padding: 18px 8px 18px 8px;
+      border-radius: 14px;
+      text-align: center;
+      min-height: 104px;
+      box-shadow: 0 2px 14px 0 #0fffc11a;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      transition: box-shadow .2s;
+    }
+    .kpi-box:hover {
+      box-shadow: 0 6px 32px #0fffc13a, 0 2px 10px #1a8fff1a;
+      background: #253c49;
+    }
+    .kpi-box h3 {
+      font-size: .95rem;
+      margin-bottom: 8px;
+      color: #bfc2d0;
+      font-weight: normal;
+      letter-spacing: .5px;
+    }
+    .kpi-box p {
+      font-size: 1.65rem;
+      font-weight: bold;
+      margin: 0;
+      color: #0fffc1;
+      letter-spacing: 0.5px;
+      line-height: 1.25;
+      word-break: break-word;
+    }
+    .kpi-icon {
+      position: absolute;
+      top: 10px;
+      right: 13px;
+      font-size: 1.15em;
+      color: #1a8fff77;
+      opacity: 0.38;
+      pointer-events: none;
+    }
+    .reset-button {
+      grid-column: 1/-1;
+      margin: 22px 0 0 0;
+      background: #ff4d6d;
+      color: white;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 1.04em;
+      width: 100%;
+      box-shadow: 0 2px 10px #ff4d6d22;
+      letter-spacing: 0.5px;
+      transition: background .15s;
+    }
+    .reset-button:hover {
+      background: #ff254d;
+    }
+    .chart-card {
+      background: #1a1e2e;
+      padding: 22px 14px 18px 14px;
+      border-radius: 14px;
+      margin-bottom: 32px;
+      box-shadow: 0 2px 16px #0fffc119;
+    }
+    .chart-card h4 {
+      margin-bottom: 12px;
+      letter-spacing: .5px;
+    }
+    .row.double-charts {
+      display: flex;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+    #top-complaints-country .dc-chart .bar {
+      fill: #1a8fff;
+    }
+    #losses-donut .dc-chart .pie-slice {
+      stroke: #23273c;
+      stroke-width: 2px;
+    }
+    .donut-center-label {
+      font-size: 1.07rem;
+      fill: #fff;
+      font-weight: bold;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      pointer-events: none;
+      text-shadow: 0 2px 8px #0fffc1;
+    }
+    @media (max-width: 1100px) {
+      .kpi-grid {
+        grid-template-columns: repeat(2, 180px);
+        padding: 22px 8px 12px 8px;
+      }
+    }
+    @media (max-width: 820px) {
+      .kpi-grid {
+        grid-template-columns: 1fr;
+        padding: 12px 4px 8px 4px;
+      }
+      .dashboard-container { padding: 10px; }
+      .chart-card { padding: 10px; }
+    }
+    @media (max-width: 700px) {
+      .row.double-charts {
+        flex-direction: column;
+        gap: 18px;
+      }
+      .dashboard-container { padding: 2px; }
+      .kpi-center-wrapper { margin-bottom: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <i class="fa-solid fa-shield-halved logo-cyber"></i>
+    <span class="title-shadow">Cybercrime Complaints & Losses Dashboard</span>
+  </header>
+  <div class="dashboard-container">
+
+    <div class="kpi-center-wrapper">
+      <div class="kpi-grid">
+        <div class="kpi-box">
+          <i class="fa-solid fa-list kpi-icon"></i>
+          <h3>Total Complaints</h3>
+          <p id="total-complaints-kpi">0</p>
+        </div>
+        <div class="kpi-box">
+          <i class="fa-solid fa-dollar-sign kpi-icon"></i>
+          <h3>Total Losses</h3>
+          <p id="total-losses-kpi">$0</p>
+        </div>
+        <div class="kpi-box">
+          <i class="fa-solid fa-money-bill-trend-up kpi-icon"></i>
+          <h3>Avg Loss per Complaint</h3>
+          <p id="avg-loss-kpi">$0</p>
+        </div>
+        <div class="kpi-box">
+          <i class="fa-solid fa-flag kpi-icon"></i>
+          <h3>Top Country by Complaints</h3>
+          <p id="top-complaints-country-kpi">-</p>
+        </div>
+        <div class="kpi-box">
+          <i class="fa-solid fa-globe kpi-icon"></i>
+          <h3>Top Country by Losses</h3>
+          <p id="top-losses-country-kpi">-</p>
+        </div>
+        <div class="kpi-box">
+          <i class="fa-solid fa-chart-bar kpi-icon"></i>
+          <h3>Highest Avg Loss per Complaint</h3>
+          <p id="top-avg-loss-country-kpi">-</p>
+        </div>
+        <button class="reset-button" id="reset-filters-btn">Reset Filters</button>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h4>Complaints Over Time</h4>
+      <div id="complaints-line-chart"></div>
+    </div>
+
+    <div class="row double-charts">
+      <div class="chart-card" style="flex: 1">
+        <h4>Top 10 Countries by Complaints</h4>
+        <div id="top-complaints-country"></div>
+      </div>
+      <div class="chart-card" style="flex: 1">
+        <h4>Top 5 Countries by Losses</h4>
+        <div id="losses-donut"></div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h4>Avg Loss per Complaint by Country</h4>
+      <div id="avg-loss-bar-chart"></div>
+    </div>
+  </div>
+
+  <script>
+    function animateValue(id, value, formatFn) {
+      const el = document.getElementById(id);
+      el.textContent = formatFn(value);
+    }
+    function animateLabel(id, label, value, formatFn) {
+      const el = document.getElementById(id);
+      if (!label) el.textContent = "-";
+      else el.textContent = label + (value !== undefined ? " (" + formatFn(value) + ")" : "");
+    }
+
+    d3.csv("crimes.csv").then(function(data) {
+      data.forEach(d => {
+        d.Year = +d.Year;
+        d.Complaints = +d.Complaints;
+        d.Losses = +d.Losses;
+      });
+
+      const ndx = crossfilter(data);
+      const yearDim = ndx.dimension(d => d.Year);
+      const countryDim = ndx.dimension(d => d.Country);
+
+      const yearComplaintsGroup = yearDim.group().reduceSum(d => d.Complaints);
+      const countryComplaintsGroup = countryDim.group().reduceSum(d => d.Complaints);
+      const countryLossesGroup = countryDim.group().reduceSum(d => d.Losses);
+
+      const totalComplaints = ndx.groupAll().reduceSum(d => d.Complaints);
+      const totalLosses = ndx.groupAll().reduceSum(d => d.Losses);
+
+      // For avg loss per complaint by country
+      const avgLossGroup = countryDim.group().reduce(
+        function(p, v) {
+          p.count += v.Complaints;
+          p.total += v.Losses;
+          return p;
+        },
+        function(p, v) {
+          p.count -= v.Complaints;
+          p.total -= v.Losses;
+          return p;
+        },
+        function() {
+          return { count: 0, total: 0 };
+        }
+      );
+
+      function updateKPIs() {
+        const comp = totalComplaints.value();
+        const loss = totalLosses.value();
+        const avg = comp > 0 ? loss / comp : 0;
+        animateValue("total-complaints-kpi", comp, d3.format(","));
+        animateValue("total-losses-kpi", loss, d3.format("$,.0f"));
+        animateValue("avg-loss-kpi", Math.round(avg), d3.format("$,.0f"));
+
+        // Top Country by Complaints
+        const complaintsArr = countryComplaintsGroup.all().filter(d => d.value > 0);
+        const topComplaint = complaintsArr.length > 0 
+          ? complaintsArr.reduce((a, b) => (b.value > a.value ? b : a))
+          : {key: "-", value: 0};
+        animateLabel("top-complaints-country-kpi", topComplaint.key, topComplaint.value, d3.format(","));
+
+        // Top Country by Losses
+        const lossesArr = countryLossesGroup.all().filter(d => d.value > 0);
+        const topLoss = lossesArr.length > 0
+          ? lossesArr.reduce((a, b) => (b.value > a.value ? b : a))
+          : {key: "-", value: 0};
+        animateLabel("top-losses-country-kpi", topLoss.key, topLoss.value, d3.format("$,.0f"));
+
+        // Highest avg loss per complaint by country
+        const avgArr = avgLossGroup.all()
+          .filter(d => d.value.count > 0)
+          .map(d => ({ key: d.key, value: d.value.total / d.value.count }));
+        const topAvg = avgArr.length > 0
+          ? avgArr.reduce((a, b) => (b.value > a.value ? b : a))
+          : {key: "-", value: 0};
+        animateLabel("top-avg-loss-country-kpi", topAvg.key, topAvg.value, d3.format("$,.0f"));
+      }
+
+      // Line chart - Complaints over time
+      dc.lineChart("#complaints-line-chart")
+        .dimension(yearDim)
+        .group(yearComplaintsGroup)
+        .x(d3.scaleLinear().domain(d3.extent(data, d => d.Year)))
+        .xAxisLabel("Year")
+        .yAxisLabel("Complaints")
+        .renderArea(true)
+        .curve(d3.curveMonotoneX)
+        .colors("#0fffc1")
+        .elasticY(true)
+        .brushOn(false)
+        .height(300);
+
+      // Row chart - Top 10 countries by complaints
+      dc.rowChart("#top-complaints-country")
+        .dimension(countryDim)
+        .group({
+          all: () => countryComplaintsGroup.all().filter(d => d.value > 0).sort((a, b) => b.value - a.value).slice(0, 10)
+        })
+        .elasticX(true)
+        .ordinalColors(["#1a8fff"])
+        .gap(6)
+        .height(330);
+
+      // Donut chart - Top 5 countries by losses
+      const getTopLossesCountries = () => {
+        return countryLossesGroup.all()
+          .filter(d => d.key && d.value > 0)
+          .sort((a, b) => b.value - a.value)
+          .slice(0, 5)
+          .map(d => d.key);
+      };
+
+      const donutDim = ndx.dimension(d => {
+        const tops = getTopLossesCountries();
+        return tops.includes(d.Country) ? d.Country : "Other";
+      });
+      const donutGroup = donutDim.group().reduceSum(d => d.Losses);
+
+      dc.pieChart("#losses-donut")
+        .dimension(donutDim)
+        .group(donutGroup)
+        .slicesCap(6)
+        .innerRadius(60)
+        .radius(110)
+        .ordinalColors(d3.schemeTableau10)
+        .renderLabel(true)
+        .height(330)
+        .on("pretransition", chart => {
+          const total = d3.sum(donutGroup.all(), d => d.value);
+          chart.select("svg").selectAll("text.donut-center-label").remove();
+          chart.select("svg")
+            .append("text")
+            .attr("class", "donut-center-label")
+            .attr("x", chart.width() / 2)
+            .attr("y", chart.height() / 2 + 5)
+            .text("Total:\n" + d3.format("$.2s")(total));
+        });
+
+      // Avg loss per complaint bar chart
+      const avgLossProcessed = {
+        all: function () {
+          return avgLossGroup.all()
+            .filter(d => d.value.count > 0)
+            .map(d => ({ key: d.key, value: d.value.total / d.value.count }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 10);
+        }
+      };
+
+      dc.barChart("#avg-loss-bar-chart")
+        .dimension(countryDim)
+        .group(avgLossProcessed)
+        .x(d3.scaleBand())
+        .xUnits(dc.units.ordinal)
+        .elasticY(true)
+        .xAxisLabel("Country")
+        .yAxisLabel("Avg Loss ($)")
+        .barPadding(0.1)
+        .outerPadding(0.2)
+        .colors(d3.schemeTableau10)
+        .height(300);
+
+      dc.renderAll();
+      updateKPIs();
+      ndx.onChange(updateKPIs);
+
+      document.getElementById("reset-filters-btn").onclick = function () {
+        dc.filterAll();
+        dc.redrawAll();
+      };
+    });
+  </script>
+</body>
+</html>
